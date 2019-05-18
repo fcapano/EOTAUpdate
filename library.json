@@ -1,0 +1,20 @@
+{
+  "name": "EOTAUpdate",
+  "keywords": "ota, update, ssl",
+  "description": "An OTA updater wrapper that also works over SSL",
+  "authors":
+  [
+    {
+      "name": "Francesco Capano",
+      "email": "fcapano@gmail.com"
+    }
+  ],
+  "repository":
+  {
+    "type": "git",
+    "url": "https://github.com/fcapano/EOTAUpdate.git"
+  },
+  "version": "1.0.0",
+  "frameworks": "arduino",
+  "platforms": "espressif"
+}
