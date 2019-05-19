@@ -13,9 +13,10 @@
  * to avoid misconfigurations or potential attack vectors.
  *
  * Setup:
- *  - Create a publicly accessible configuration file containing three lines (no spaces):
+ *  - Create a publicly accessible configuration file containing four lines (no spaces):
  *      https://myserver/ota/lastBuild.bin  <- Full URL of firmware to install
  *      3                                   <- Integer version of the new firmware
+ *      a2fbf5835de079474e820ceda2ca9986    <- [optional] MD5 of the binary
  *      1.3                                 <- [optional] Version string, useful for logging
  *
  *    Let's assume it is publicly accessible at https://myserver/ota/cfg.txt
@@ -64,9 +65,9 @@ public:
     bool CheckAndUpdate(bool force = false);
 
 private:
-    bool GetUpdateFWURL(String &binURL);
-    bool GetUpdateFWURL(String &binURL, const String &url, const uint16_t retries = 5);
-    bool PerformOTA(String &binURL);
+    bool GetUpdateFWURL(String &binURL, String &binMD5);
+    bool GetUpdateFWURL(String &binURL, String &binMD5, const String &url, const uint16_t retries = 5);
+    bool PerformOTA(String &binURL, String &binMD5);
 
 private:
     String _url;

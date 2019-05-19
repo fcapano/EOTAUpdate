@@ -10,8 +10,9 @@ flash them with minimal configuration.
 
 - Copy the file ota/cfg.txt to a server that can be reached by your ESP32 and update the fields as needed.
 
--  The file contains three lines, the URL to the firmware to install, a number representing its version and
-  a description of the version (this is optional and only used in logs).
+-  The file contains four lines, the URL to the firmware to install, a number representing its version, an optional MD5 of the binary
+   and an optional description of the version.
+   If not including optional field, leave an empty line in its place.
 
 - Add the following lines to the beginning your main.cpp
 
@@ -31,4 +32,3 @@ When releasing an update remember to
 - Update the constant VERSION_NUMBER in your code, otherwise you might end up with an update loop
 - Upload the firmware to the sever
 - Update the cfg.txt with the newly released version number and string
-

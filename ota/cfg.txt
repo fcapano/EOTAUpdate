@@ -1,4 +1,4 @@
 https://myserver/ota/lastBuild.bin
 2
+a2fbf5835de079474e820ceda2ca9986
 1.1
-

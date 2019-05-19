@@ -1,4 +1,5 @@
 #include <HTTPClient.h>
+#include <MD5Builder.h>
 #include <StreamString.h>
 #include <Update.h>
 #include <WiFi.h>
@@ -32,20 +33,21 @@ bool EOTAUpdate::CheckAndUpdate(bool force)
 
     _lastUpdateMs = millis();
     String binURL;
-    if (GetUpdateFWURL(binURL))
+    String binMD5;
+    if (GetUpdateFWURL(binURL, binMD5))
     {
         log_i("Update found. Performing update\n");
-        return PerformOTA(binURL);
+        return PerformOTA(binURL, binMD5);
     }
     return false;
 }
 
-bool EOTAUpdate::GetUpdateFWURL(String &binURL)
+bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5)
 {
-    return GetUpdateFWURL(binURL, _url);
+    return GetUpdateFWURL(binURL, binMD5, _url);
 }
 
-bool EOTAUpdate::GetUpdateFWURL(String &binURL, const String &url, const uint16_t retries)
+bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &url, const uint16_t retries)
 {
     log_d("Fetching OTA config from: %s\n", url);
 
@@ -87,7 +89,7 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, const String &url, const uint16_
     case HTTP_CODE_MOVED_PERMANENTLY:
         if (httpClient.hasHeader("Location"))
         {
-            return GetUpdateFWURL(binURL, httpClient.header("Location"), retries - 1);
+            return GetUpdateFWURL(binURL, binMD5, httpClient.header("Location"), retries - 1);
         }
     default:
         log_e("[HTTP] [ERROR] [%d] %s\n");
@@ -100,8 +102,9 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, const String &url, const uint16_
 
     auto & payloadStream = httpClient.getStream();
     binURL = payloadStream.readStringUntil('\n');
-    unsigned newVersionNumber = payloadStream.readStringUntil('\n').toInt();
-    String newVersionString = payloadStream.readStringUntil('\n');
+    const unsigned newVersionNumber = payloadStream.readStringUntil('\n').toInt();
+    binMD5 = payloadStream.readStringUntil('\n');
+    const String newVersionString = payloadStream.readStringUntil('\n');
     httpClient.end();
 
     if (binURL.length() == 0)
@@ -116,8 +119,14 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, const String &url, const uint16_
         return false;
     }
 
+    if (binMD5.length() > 0 && binMD5.length() != 32) {
+        log_e("The MD5 is not 32 characters long. Aborting update\n");
+        return false;
+    }
+
     log_d("Fetched update information:\n");
     log_d(".bin url:           %s\n",       binURL);
+    log_d(".bin MD5:           %s\n",       binMD5);
     log_d("Current version:    %u\n",       _currentVersion);
     log_d("Published version:  [%u] %s\n",  newVersionNumber, newVersionString);
     log_d("Update available:   %s\n",       (newVersionNumber > _currentVersion) ? "YES" : "NO");
@@ -125,7 +134,7 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, const String &url, const uint16_
     return newVersionNumber > _currentVersion;
 }
 
-bool EOTAUpdate::PerformOTA(String &binURL)
+bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
 {
     log_d("Fetching OTA from: %s\n", binURL);
 
@@ -167,6 +176,13 @@ bool EOTAUpdate::PerformOTA(String &binURL)
 
     const auto payloadSize = httpClient.getSize();
     auto & payloadStream = httpClient.getStream();
+
+    if (binMD5.length() > 0 &&
+        !Update.setMD5(binMD5.c_str())) {
+            log_e("Failed to set the expected MD5\n");
+            return false;
+    }
+
     const bool canBegin = Update.begin(payloadSize);
 
     if (payloadSize <= 0)
