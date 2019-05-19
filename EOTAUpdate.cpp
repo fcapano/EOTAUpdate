@@ -1,4 +1,5 @@
 #include <HTTPClient.h>
+#include <StreamString.h>
 #include <Update.h>
 #include <WiFi.h>
 #include <WiFiClient.h>
@@ -183,19 +184,23 @@ bool EOTAUpdate::PerformOTA(String &binURL)
     const auto written = Update.writeStream(payloadStream);
     if (written != payloadSize)
     {
-        log_e("Error. Written %s out of %s\n", String(written), String(payloadSize));
+        log_e("Error. Written %lu out of %lu\n", written, payloadSize);
         return false;
     }
 
     if (!Update.end())
     {
-        log_e("Error Occurred: %s\n", String(Update.getError()));
+        StreamString errorMsg;
+        Update.printError(errorMsg);
+        log_e("Error Occurred: %s\n", errorMsg.c_str());
         return false;
     }
 
     if (!Update.isFinished())
     {
-        log_e("Undefined OTA update error\n");
+        StreamString errorMsg;
+        Update.printError(errorMsg);
+        log_e("Undefined OTA update error: %s\n", errorMsg.c_str());
         return false;
     }
 
