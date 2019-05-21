@@ -38,7 +38,7 @@ class EOTAUpdate
 {
 private:
     static const unsigned long UPDATE_INTERVAL_MS    = 60 * 60 * 1000;  // 1 hour
-    static const unsigned long CONNECTION_TIMEOUT_MS = 5 * 1000;        // 5 seconds
+
 public:
     /**
      * @brief Create an EOTAUpdate instance

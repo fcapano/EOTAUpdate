@@ -14,7 +14,7 @@
     "type": "git",
     "url": "https://github.com/fcapano/EOTAUpdate.git"
   },
-  "version": "1.0.1",
+  "version": "1.0.2",
   "frameworks": "arduino",
   "platforms": ["espressif8266", "espressif32"]
 }
