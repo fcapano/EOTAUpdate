@@ -29,14 +29,20 @@ bool EOTAUpdate::CheckAndUpdate(bool force)
         return false;
     }
 
-    log_i("Checking for updates\n");
+    if (WiFi.status() != WL_CONNECTED)
+    {
+        log_e("Wifi not connected");
+        return false;
+    }
+
+    log_i("Checking for updates");
 
     _lastUpdateMs = millis();
     String binURL;
     String binMD5;
     if (GetUpdateFWURL(binURL, binMD5))
     {
-        log_i("Update found. Performing update\n");
+        log_i("Update found. Performing update");
         return PerformOTA(binURL, binMD5);
     }
     return false;
@@ -49,11 +55,11 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5)
 
 bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &url, const uint16_t retries)
 {
-    log_d("Fetching OTA config from: %s\n", url);
+    log_d("Fetching OTA config from: %s", url.c_str());
 
     if (retries == 0)
     {
-        log_e("Too many retries/redirections\n");
+        log_e("Too many retries/redirections");
         return false;
     }
 
@@ -61,13 +67,7 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &ur
 
     if (_forceSSL && !isSSL)
     {
-        log_e("Trying to access a non-ssl URL on a secure update checker\n");
-        return false;
-    }
-
-    if (WiFi.status() != WL_CONNECTED)
-    {
-        log_d("Wifi not connected\n");
+        log_e("Trying to access a non-ssl URL on a secure update checker");
         return false;
     }
 
@@ -75,7 +75,7 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &ur
     auto client = WiFiClient();
     if (!httpClient.begin(url))
     {
-        log_e("Error initializing client\n");
+        log_e("Error initializing client");
         return false;
     }
 
@@ -91,12 +91,13 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &ur
         {
             return GetUpdateFWURL(binURL, binMD5, httpClient.header("Location"), retries - 1);
         }
+        // Do not break here
     default:
-        log_e("[HTTP] [ERROR] [%d] %s\n");
-        log_d("Response:\n%s\n",
+        log_e("[HTTP] [ERROR] [%d] %s",
                 httpCode,
-                httpClient.errorToString(httpCode),
-                httpClient.getString());
+                httpClient.errorToString(httpCode).c_str());
+        log_d("Response:\n%s",
+                httpClient.getString().c_str());
         return false;
     }
 
@@ -109,34 +110,35 @@ bool EOTAUpdate::GetUpdateFWURL(String &binURL, String &binMD5, const String &ur
 
     if (binURL.length() == 0)
     {
-        log_e("Error parsing remote path of new binary\n");
+        log_e("Error parsing remote path of new binary");
         return false;
     }
 
     if (newVersionNumber == 0)
     {
-        log_e("Error parsing version number\n");
+        log_e("Error parsing version number");
         return false;
     }
 
-    if (binMD5.length() > 0 && binMD5.length() != 32) {
-        log_e("The MD5 is not 32 characters long. Aborting update\n");
+    if (binMD5.length() > 0 && binMD5.length() != 32)
+    {
+        log_e("The MD5 is not 32 characters long. Aborting update");
         return false;
     }
 
-    log_d("Fetched update information:\n");
-    log_d(".bin url:           %s\n",       binURL);
-    log_d(".bin MD5:           %s\n",       binMD5);
-    log_d("Current version:    %u\n",       _currentVersion);
-    log_d("Published version:  [%u] %s\n",  newVersionNumber, newVersionString);
-    log_d("Update available:   %s\n",       (newVersionNumber > _currentVersion) ? "YES" : "NO");
+    log_d("Fetched update information:");
+    log_d("File url:           %s",       binURL.c_str());
+    log_d("File MD5:           %s",       binMD5.c_str());
+    log_d("Current version:    %u",       _currentVersion);
+    log_d("Published version:  [%u] %s",  newVersionNumber, newVersionString.c_str());
+    log_d("Update available:   %s",       (newVersionNumber > _currentVersion) ? "YES" : "NO");
 
     return newVersionNumber > _currentVersion;
 }
 
 bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
 {
-    log_d("Fetching OTA from: %s\n", binURL);
+    log_d("Fetching OTA from: %s", binURL.c_str());
 
     if (binURL.length() == 0)
     {
@@ -146,31 +148,31 @@ bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
     bool isSSL = binURL.startsWith("https");
     if (_forceSSL && !isSSL)
     {
-        log_e("Trying to access a non-ssl URL on a secure update checker\n");
+        log_e("Trying to access a non-ssl URL on a secure update checker");
         return false;
     }
 
     if (WiFi.status() != WL_CONNECTED)
     {
-        log_d("Wifi not connected\n");
+        log_d("Wifi not connected");
         return false;
     }
 
     HTTPClient httpClient;
     if (!httpClient.begin(binURL))
     {
-        log_e("Error initializing client\n");
+        log_e("Error initializing client");
         return false;
     }
 
     const auto httpCode = httpClient.GET();
     if (httpCode != HTTP_CODE_OK)
     {
-        log_e("[HTTP] [ERROR] [%d] %s\n");
-        log_d("Response:\n%s\n",
+        log_e("[HTTP] [ERROR] [%d] %s",
                 httpCode,
-                httpClient.errorToString(httpCode),
-                httpClient.getString());
+                httpClient.errorToString(httpCode).c_str());
+        log_d("Response:\n%s",
+                httpClient.getString().c_str());
         return false;
     }
 
@@ -178,8 +180,9 @@ bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
     auto & payloadStream = httpClient.getStream();
 
     if (binMD5.length() > 0 &&
-        !Update.setMD5(binMD5.c_str())) {
-            log_e("Failed to set the expected MD5\n");
+        !Update.setMD5(binMD5.c_str()))
+    {
+            log_e("Failed to set the expected MD5");
             return false;
     }
 
@@ -187,20 +190,20 @@ bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
 
     if (payloadSize <= 0)
     {
-        log_e("Fetched binary has 0 size\n");
+        log_e("Fetched binary has 0 size");
         return false;
     }
 
     if (!canBegin)
     {
-        log_e("Not enough space to begin OTA\n");
+        log_e("Not enough space to begin OTA");
         return false;
     }
 
     const auto written = Update.writeStream(payloadStream);
     if (written != payloadSize)
     {
-        log_e("Error. Written %lu out of %lu\n", written, payloadSize);
+        log_e("Error. Written %lu out of %lu", written, payloadSize);
         return false;
     }
 
@@ -208,7 +211,7 @@ bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
     {
         StreamString errorMsg;
         Update.printError(errorMsg);
-        log_e("Error Occurred: %s\n", errorMsg.c_str());
+        log_e("Error Occurred: %s", errorMsg.c_str());
         return false;
     }
 
@@ -216,11 +219,11 @@ bool EOTAUpdate::PerformOTA(String &binURL, String &binMD5)
     {
         StreamString errorMsg;
         Update.printError(errorMsg);
-        log_e("Undefined OTA update error: %s\n", errorMsg.c_str());
+        log_e("Undefined OTA update error: %s", errorMsg.c_str());
         return false;
     }
 
-    log_i("Update completed. Rebooting\n");
+    log_i("Update completed. Rebooting");
     ESP.restart();
     return true;
 }
